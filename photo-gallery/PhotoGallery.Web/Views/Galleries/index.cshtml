@@ -1,0 +1,35 @@
+@* view for a list of galleries *@
+@model IEnumerable<PhotoGallery.Web.Models.Gallery>
+
+@{
+    ViewData["Title"] = "Galleries";
+}
+
+<h1 class="display-6">Galleries</h1>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Chill for now</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Created (UTC)</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var g in Model)
+        {
+            <tr>
+                <td>@g.Title</td>
+                <td>@g.Description</td>
+                <td>@g.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

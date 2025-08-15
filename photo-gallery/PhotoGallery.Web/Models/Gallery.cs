@@ -18,7 +18,7 @@ namespace PhotoGallery.Web.Models
         [Required]
         public string OwnerId { get; set; } = string.Empty;
 
-        public IdentityUser? Owner { get; set; }
+        public ApplicationUser? Owner { get; set; } 
 
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     }

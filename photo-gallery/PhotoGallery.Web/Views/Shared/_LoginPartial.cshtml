@@ -1,21 +1,42 @@
 ﻿@using Microsoft.AspNetCore.Identity
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
+@using PhotoGallery.Web.Models                                     
+@inject SignInManager<ApplicationUser> SignInManager               
+@inject UserManager<ApplicationUser> UserManager                   
 
 <ul class="navbar-nav">
 @if (SignInManager.IsSignedIn(User))
 {
+    @* A friendly display name but it sha will fall back to email/username if it fails *@
+    var me = await UserManager.GetUserAsync(User);
+    var display = me is null
+        ? (User.Identity?.Name ?? "User")
+        : (!string.IsNullOrWhiteSpace(me.FirstName) || !string.IsNullOrWhiteSpace(me.LastName)
+            ? $"{me.FirstName} {me.LastName}".Trim()
+            : (me.Email ?? me.UserName ?? "User"));
+
     <li class="nav-item">
-        <a  class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @User.Identity?.Name!</a>
+        @* Link greeting to the Profile Manage page *@
+        <a class="nav-link text-dark"
+           asp-area="Identity"
+           asp-page="/Account/Manage/Index"
+           title="Manage">
+            @display
+        </a>
     </li>
     <li class="nav-item">
-        <form  class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-            <button  type="submit" class="nav-link btn btn-link text-dark">Logout</button>
+        @* Logout posts back to Identity UI logout page then returns to Home afterwards *@
+        <form class="form-inline"
+              asp-area="Identity"
+              asp-page="/Account/Logout"
+              asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })"
+              method="post">
+            <button type="submit" class="nav-link btn btn-link text-dark">Logout</button>
         </form>
     </li>
 }
 else
 {
+
     <li class="nav-item">
         <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
     </li>

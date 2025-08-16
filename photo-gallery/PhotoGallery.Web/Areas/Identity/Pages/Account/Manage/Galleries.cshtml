@@ -1,0 +1,87 @@
+@page
+@model PhotoGallery.Web.Areas.Identity.Pages.Account.Manage.GalleriesModel
+@using PhotoGallery.Web.Areas.Identity.Pages.Account.Manage   
+@{
+    Layout = "/Areas/Identity/Pages/Account/Manage/_Layout.cshtml";
+    ViewData["Title"] = "My Galleries";
+    ViewData["ActivePage"] = ManageNavPages.Galleries;  
+}
+
+<h3 class="mb-3">@ViewData["Title"]</h3>
+
+<partial name="_StatusMessage" for="@TempData["StatusMessage"]" />
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Your Galleries</h5>
+
+                @if (!Model.MyGalleries.Any())
+                {
+                    <p class="text-muted mb-0">You don’t have any galleries yet.</p>
+                }
+                else
+                {
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Description</th>
+                                <th>Created (UTC)</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var g in Model.MyGalleries)
+                        {
+                            <tr>
+                                <td>@g.Title</td>
+                                <td class="text-muted">@g.Description</td>
+                                <td>@g.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-secondary disabled" title="Coming soon">Open</a>
+
+                                    <form class="d-inline" method="post" asp-page-handler="Delete" asp-route-id="@g.Id"
+                                          onsubmit="return confirm('Delete this gallery? This cannot be undone.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Create a new gallery</h5>
+
+                <form method="post" asp-page-handler="Create">
+                    <div class="mb-3">
+                        <label asp-for="Input.Title" class="form-label"></label>
+                        <input asp-for="Input.Title" class="form-control" placeholder="e.g., Summer 2025" />
+                        <span asp-validation-for="Input.Title" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Description" class="form-label"></label>
+                        <textarea asp-for="Input.Description" rows="3" class="form-control"
+                                  placeholder="Optional: a short description"></textarea>
+                        <span asp-validation-for="Input.Description" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create gallery</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

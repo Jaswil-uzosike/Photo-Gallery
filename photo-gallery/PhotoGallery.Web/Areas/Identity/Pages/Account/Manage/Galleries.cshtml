@@ -40,7 +40,9 @@
                                 <td class="text-muted">@g.Description</td>
                                 <td>@g.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
                                 <td class="text-end">
-                                    <a class="btn btn-sm btn-outline-secondary disabled" title="Coming soon">Open</a>
+                                    <a class="btn btn-sm btn-outline-secondary"
+                                        asp-page="./Gallery"
+                                        asp-route-id="@g.Id">Open</a>
 
                                     <form class="d-inline" method="post" asp-page-handler="Delete" asp-route-id="@g.Id"
                                           onsubmit="return confirm('Delete this gallery? This cannot be undone.');">

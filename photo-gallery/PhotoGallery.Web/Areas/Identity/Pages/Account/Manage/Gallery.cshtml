@@ -1,0 +1,56 @@
+@page "{id:int}"
+@model PhotoGallery.Web.Areas.Identity.Pages.Account.Manage.GalleryModel
+@using PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
+@{
+    Layout = "/Areas/Identity/Pages/Account/Manage/_Layout.cshtml";
+    ViewData["Title"] = "Gallery";
+    ViewData["ActivePage"] = ManageNavPages.Galleries;  
+}
+
+<h3 class="mb-3">
+    @Model.Gallery?.Title
+    <small class="text-muted d-block fs-6">
+        @Model.Gallery?.Description
+    </small>
+</h3>
+
+<div class="mb-3">
+    <a class="btn btn-outline-secondary" asp-page="./Galleries">← Back to My Galleries</a>
+    <button class="btn btn-primary" disabled title="Coming soon">Upload photos</button>
+    <a class="btn btn-outline-secondary" asp-page="./EditGallery" asp-route-id="@Model.Gallery!.Id">Edit gallery</a>
+</div>
+
+@if (Model.Photos.Count == 0)
+{
+    <div class="text-center p-5 border rounded bg-light">
+        <img src="/img/placeholder-photo.svg" width="160" class="mb-3" alt="No photos yet" />
+        <p class="text-muted mb-3">No photos in this gallery yet.</p>
+        <a class="btn btn-primary disabled" title="Coming soon">Upload photos</a>
+    </div>
+}
+else
+{
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+        @foreach (var p in Model.Photos)
+        {
+            var src = string.IsNullOrWhiteSpace(p.ThumbPath)
+                ? "/img/placeholder-photo.svg" 
+                : p.ThumbPath;
+
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <img src="@src" class="card-img-top" alt="Photo @p.Id" />
+                    <div class="card-body p-2 d-flex gap-2">
+                        <a class="btn btn-sm btn-outline-primary disabled" title="Coming soon">View</a>
+                        <a class="btn btn-sm btn-outline-success disabled" title="Coming soon">Download</a>
+                        <a class="btn btn-sm btn-outline-danger disabled ms-auto" title="Coming soon">Delete</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

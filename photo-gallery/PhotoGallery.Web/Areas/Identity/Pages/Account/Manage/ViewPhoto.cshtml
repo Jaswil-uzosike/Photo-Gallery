@@ -1,0 +1,26 @@
+@page "{id:int}/{photoId:int}"
+@model PhotoGallery.Web.Areas.Identity.Pages.Account.Manage.ViewPhotoModel
+@using PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
+@{
+    Layout = "/Areas/Identity/Pages/Account/Manage/_Layout.cshtml";
+    ViewData["Title"] = "Photo";
+    ViewData["ActivePage"] = ManageNavPages.Galleries;
+}
+
+<div class="mb-3">
+    <a class="btn btn-outline-secondary" asp-page="./Gallery" asp-route-id="@Model.Photo!.GalleryId">← Back to Gallery</a>
+</div>
+
+@if (Model.Photo is null)
+{
+    <div class="alert alert-warning">Photo not found.</div>
+}
+else
+{
+    <div class="text-center">
+        <img src="@Model.ImageUrl" class="img-fluid" alt="Photo @Model.Photo.Id" />
+        <p class="text-muted mt-2">
+            @Model.Photo.ContentType · @((Model.Photo.SizeBytes / 1024d / 1024d).ToString("0.##")) MB · uploaded @Model.Photo.CreatedUtc.ToLocalTime()
+        </p>
+    </div>
+}

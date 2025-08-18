@@ -1,11 +1,14 @@
 @page "{id:int}"
 @model PhotoGallery.Web.Areas.Identity.Pages.Account.Manage.GalleryModel
 @using PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
+@inject PhotoGallery.Web.Services.IFileStorage Storage
+
 @{
     Layout = "/Areas/Identity/Pages/Account/Manage/_Layout.cshtml";
     ViewData["Title"] = "Gallery";
     ViewData["ActivePage"] = ManageNavPages.Galleries;
-    var showUpload = !ViewData.ModelState.IsValid;  
+
+    var showUpload = !ViewData.ModelState.IsValid; // auto-open upload on validation errors
 }
 
 <h3 class="mb-2">@Model.Gallery?.Title</h3>
@@ -14,9 +17,12 @@
     <div class="text-muted mb-3">@Model.Gallery!.Description</div>
 }
 
-<div class="mb-3">
+<div class="d-flex gap-2 mb-3">
     <a class="btn btn-outline-secondary" asp-page="./Galleries">← Back to My Galleries</a>
-    <a class="btn btn-outline-secondary" asp-page="./EditGallery" asp-route-id="@Model.Gallery!.Id">Edit gallery</a>
+    @if (Model.Gallery is not null)
+    {
+        <a class="btn btn-outline-secondary" asp-page="./EditGallery" asp-route-id="@Model.Gallery.Id">Edit gallery</a>
+    }
 
     <button type="button"
             class="btn btn-primary ms-auto"
@@ -26,52 +32,108 @@
             aria-controls="uploadPanel">
         Upload photos
     </button>
+
+    <!-- Editor upload the button -->
+    <button type="button"
+            class="btn btn-outline-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#editorModal">
+        Edit & Upload
+    </button>
 </div>
 
 <partial name="_StatusMessage" for="@TempData["StatusMessage"]" />
 
-<!-- Upload Form -->
+<!-- Upload form -->
 <div class="collapse @(showUpload ? "show" : "")" id="uploadPanel">
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h5 class="card-title mb-3">Upload photos</h5>
-
-            <form method="post" enctype="multipart/form-data" asp-page-handler="Upload" asp-route-id="@Model.Gallery!.Id">
-                <div class="mb-3">
-                    <input asp-for="Uploads" type="file" class="form-control" accept="image/*" multiple />
-                    <span asp-validation-for="Uploads" class="text-danger"></span>
-                </div>
-                <button type="submit" class="btn btn-primary">Upload</button>
-            </form>
-
+            @if (Model.Gallery is not null)
+            {
+                <form method="post"
+                      enctype="multipart/form-data"
+                      asp-page-handler="Upload"
+                      asp-route-id="@Model.Gallery.Id">
+                    <div class="mb-3">
+                        <input asp-for="Uploads" type="file" class="form-control" accept="image/*" multiple />
+                        <span asp-validation-for="Uploads" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </form>
+            }
+            else
+            {
+                <div class="alert alert-warning mb-0">Gallery not found.</div>
+            }
             <small class="text-muted d-block mt-2">JPEG, PNG, GIF, WEBP. Max 20&nbsp;MB per file.</small>
         </div>
     </div>
 </div>
 
+<!-- Photos grid -->
 @if (Model.Photos.Count == 0)
 {
     <div class="text-center p-5 border rounded bg-light">
         <img src="/img/placeholder-photo.svg" width="160" class="mb-3" alt="No photos yet" />
-        <p class="text-muted mb-3">No photos in this gallery yet.</p>
+        <p class="text-muted mb-0">No photos in this gallery yet.</p>
     </div>
 }
 else
 {
     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
-        @foreach (var p in Model.Photos)
+        @for (var i = 0; i < Model.Photos.Count; i++)
         {
-            var src = !string.IsNullOrWhiteSpace(p.ThumbPath) ? p.ThumbPath
-                : !string.IsNullOrWhiteSpace(p.OriginalPath) ? p.OriginalPath
-                : "/img/placeholder-photo.svg";
+            var p = Model.Photos[i];
+
+            var thumbSrc =
+                !string.IsNullOrWhiteSpace(p.ThumbStorageKey) ? Storage.GetReadUrl(p.ThumbStorageKey, System.TimeSpan.FromHours(1)) :
+                !string.IsNullOrWhiteSpace(p.ThumbPath)       ? p.ThumbPath :
+                !string.IsNullOrWhiteSpace(p.OriginalPath)     ? p.OriginalPath :
+                "/img/placeholder-photo.svg";
+
+            var fullSrc =
+                !string.IsNullOrWhiteSpace(p.StorageKey)       ? Storage.GetReadUrl(p.StorageKey, System.TimeSpan.FromHours(1)) :
+                !string.IsNullOrWhiteSpace(p.OriginalPath)     ? p.OriginalPath :
+                "/img/placeholder-photo.svg";
 
             <div class="col">
                 <div class="card shadow-sm h-100">
-                    <img src="@src" class="card-img-top" alt="Photo @p.Id" />
-                    <div class="card-body p-2 d-flex gap-2">
-                        <a class="btn btn-sm btn-outline-primary disabled" title="Coming soon">View</a>
-                        <a class="btn btn-sm btn-outline-success disabled" title="Coming soon">Download</a>
-                        <a class="btn btn-sm btn-outline-danger disabled ms-auto" title="Coming soon">Delete</a>
+                    <!-- view click on image -->
+                    <img src="@thumbSrc"
+                         class="card-img-top view-photo"
+                         alt="Photo @p.Id"
+                         style="object-fit:cover; aspect-ratio: 4/3; cursor: zoom-in;"
+                         data-index="@i"
+                         data-fullurl="@fullSrc"
+                         data-caption="Photo @p.Id"
+                         data-bs-toggle="modal"
+                         data-bs-target="#photoModal" />
+                    <div class="card-body p-2 d-flex gap-2 align-items-center">
+
+                        <!-- Download-->
+                        @if (Model.Gallery is not null)
+                        {
+                            <a class="btn btn-sm btn-outline-success"
+                               asp-page-handler="Download"
+                               asp-route-id="@Model.Gallery.Id"
+                               asp-route-photoId="@p.Id">
+                                Download
+                            </a>
+                        }
+
+                        <!--Delete -->
+                        @if (Model.Gallery is not null)
+                        {
+                            <form method="post"
+                                  asp-page-handler="Delete"
+                                  asp-route-id="@Model.Gallery.Id"
+                                  asp-route-photoId="@p.Id"
+                                  class="ms-auto"
+                                  onsubmit="return confirm('Delete this photo?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        }
                     </div>
                 </div>
             </div>
@@ -79,6 +141,186 @@ else
     </div>
 }
 
+<!-- Lightbox modal -->
+<style>
+  .lightbox-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    z-index: 5; background: rgba(255,255,255,.85); border: 0;
+    width: 3rem; height: 3rem; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .lightbox-prev { left: .75rem; } .lightbox-next { right: .75rem; }
+</style>
+
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content position-relative">
+      <div class="modal-header">
+        <h5 class="modal-title" id="photoModalLabel">Photo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <button type="button" class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous">‹</button>
+      <button type="button" class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next">›</button>
+
+      <div class="modal-body text-center">
+        <img id="modalImage" src="" alt="Full photo" class="img-fluid" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Editor upload -->
+<link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
+<div class="modal fade" id="editorModal" tabindex="-1" aria-labelledby="editorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editorModalLabel">Edit & Upload</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        @if (Model.Gallery is not null)
+        {
+            <form id="editUploadForm"
+                  method="post"
+                  asp-page-handler="UploadEdited"
+                  asp-route-id="@Model.Gallery.Id">
+                <div class="mb-3">
+                    <input id="editFile" type="file" class="form-control" accept="image/*" />
+                </div>
+
+                <div class="row">
+                    <div class="col-12 col-lg-9 text-center mb-3 mb-lg-0">
+                        <img id="editorImage" src="/img/placeholder-photo.svg" alt="Editor" style="max-width:100%; max-height:70vh;" />
+                    </div>
+                    <div class="col-12 col-lg-3 d-grid gap-2">
+                        <button type="button" class="btn btn-outline-secondary" id="rotateLeft">Rotate -90°</button>
+                        <button type="button" class="btn btn-outline-secondary" id="rotateRight">Rotate +90°</button>
+                        <button type="button" class="btn btn-outline-secondary" id="resetEdit">Reset</button>
+                        <hr />
+                        <input type="text" class="form-control" id="editedName" placeholder="filename.jpg (optional)" />
+                        <input type="hidden" name="EditedImageData" id="EditedImageData" />
+                        <input type="hidden" name="EditedFileName" id="EditedFileName" />
+                        <button type="button" class="btn btn-primary" id="saveEdited">Save & Upload</button>
+                    </div>
+                </div>
+            </form>
+        }
+        else
+        {
+            <div class="alert alert-warning mb-0">Gallery not found.</div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+  <partial name="_ValidationScriptsPartial" />
+  <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
+
+  <script>
+    // ---------- Lightbox ----------
+    (function () {
+      const modalEl = document.getElementById('photoModal');
+      const imgEl   = document.getElementById('modalImage');
+      const titleEl = document.getElementById('photoModalLabel');
+      const prevBtn = document.getElementById('lightboxPrev');
+      const nextBtn = document.getElementById('lightboxNext');
+      if (!modalEl || !imgEl || !titleEl || !prevBtn || !nextBtn) return;
+
+      const nodes = Array.from(document.querySelectorAll('.view-photo[data-fullurl]'));
+      let current = -1;
+
+      function load(index) {
+        if (index < 0 || index >= nodes.length) return;
+        current = index;
+        const el = nodes[current];
+        const url = el.getAttribute('data-fullurl') || '/img/placeholder-photo.svg';
+        const caption = el.getAttribute('data-caption') || 'Photo';
+        imgEl.src = url; titleEl.textContent = caption;
+      }
+      function prev() { if (nodes.length) load((current - 1 + nodes.length) % nodes.length); }
+      function next() { if (nodes.length) load((current + 1) % nodes.length); }
+
+      modalEl.addEventListener('show.bs.modal', function (ev) {
+        const el = ev.relatedTarget;
+        const idx = el ? parseInt(el.getAttribute('data-index') || '-1', 10) : -1;
+        if (idx >= 0) load(idx);
+      });
+      modalEl.addEventListener('hidden.bs.modal', function () { imgEl.src = ''; current = -1; });
+      prevBtn.addEventListener('click', prev);
+      nextBtn.addEventListener('click', next);
+      modalEl.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+      });
+      modalEl.addEventListener('shown.bs.modal', () => modalEl.focus());
+
+      let touchX = null;
+      imgEl.addEventListener('touchstart', e => { if (e.touches?.length === 1) touchX = e.touches[0].clientX; }, { passive: true });
+      imgEl.addEventListener('touchend', e => {
+        if (touchX == null) return;
+        const endX = e.changedTouches?.[0]?.clientX ?? touchX;
+        const dx = endX - touchX, threshold = 50;
+        if (dx > threshold) prev(); else if (dx < -threshold) next();
+        touchX = null;
+      }, { passive: true });
+    })();
+
+    // ---------- Editor (Crop/Rotate) ----------
+    (function () {
+      const modal   = document.getElementById('editorModal');
+      const fileInp = document.getElementById('editFile');
+      const img     = document.getElementById('editorImage');
+      const rotL    = document.getElementById('rotateLeft');
+      const rotR    = document.getElementById('rotateRight');
+      const reset   = document.getElementById('resetEdit');
+      const saveBtn = document.getElementById('saveEdited');
+
+      const hiddenData = document.getElementById('EditedImageData');
+      const hiddenName = document.getElementById('EditedFileName');
+      const nameBox    = document.getElementById('editedName');
+      const form       = document.getElementById('editUploadForm');
+
+      let cropper = null;
+      function destroy() { if (cropper) { cropper.destroy(); cropper = null; } }
+
+      fileInp?.addEventListener('change', function () {
+        const file = this.files && this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          img.src = e.target.result;
+          destroy();
+          cropper = new Cropper(img, {
+            viewMode: 1, dragMode: 'move', aspectRatio: NaN, autoCropArea: 1,
+            background: false, responsive: true
+          });
+        };
+        reader.readAsDataURL(file);
+        if (!nameBox.value) nameBox.value = file.name || '';
+      });
+
+      rotL?.addEventListener('click', () => cropper?.rotate(-90));
+      rotR?.addEventListener('click', () => cropper?.rotate(90));
+      reset?.addEventListener('click', () => cropper?.reset());
+
+      saveBtn?.addEventListener('click', function () {
+        if (!cropper) { alert('Choose an image first.'); return; }
+        const canvas = cropper.getCroppedCanvas({ maxWidth: 4096, maxHeight: 4096 });
+        if (!canvas) { alert('Unable to crop.'); return; }
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        hiddenData.value = dataUrl;
+        hiddenName.value = nameBox.value || '';
+        form.submit();
+      });
+
+      modal?.addEventListener('hidden.bs.modal', function () {
+        destroy(); img.src = '/img/placeholder-photo.svg'; fileInp.value = ''; nameBox.value = '';
+      });
+    })();
+  </script>
 }

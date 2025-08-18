@@ -4,20 +4,49 @@
 @{
     Layout = "/Areas/Identity/Pages/Account/Manage/_Layout.cshtml";
     ViewData["Title"] = "Gallery";
-    ViewData["ActivePage"] = ManageNavPages.Galleries;  
+    ViewData["ActivePage"] = ManageNavPages.Galleries;
+    var showUpload = !ViewData.ModelState.IsValid;  
 }
 
-<h3 class="mb-3">
-    @Model.Gallery?.Title
-    <small class="text-muted d-block fs-6">
-        @Model.Gallery?.Description
-    </small>
-</h3>
+<h3 class="mb-2">@Model.Gallery?.Title</h3>
+@if (!string.IsNullOrWhiteSpace(Model.Gallery?.Description))
+{
+    <div class="text-muted mb-3">@Model.Gallery!.Description</div>
+}
 
 <div class="mb-3">
     <a class="btn btn-outline-secondary" asp-page="./Galleries">← Back to My Galleries</a>
-    <button class="btn btn-primary" disabled title="Coming soon">Upload photos</button>
     <a class="btn btn-outline-secondary" asp-page="./EditGallery" asp-route-id="@Model.Gallery!.Id">Edit gallery</a>
+
+    <button type="button"
+            class="btn btn-primary ms-auto"
+            data-bs-toggle="collapse"
+            data-bs-target="#uploadPanel"
+            aria-expanded="@(showUpload.ToString().ToLower())"
+            aria-controls="uploadPanel">
+        Upload photos
+    </button>
+</div>
+
+<partial name="_StatusMessage" for="@TempData["StatusMessage"]" />
+
+<!-- Upload Form -->
+<div class="collapse @(showUpload ? "show" : "")" id="uploadPanel">
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Upload photos</h5>
+
+            <form method="post" enctype="multipart/form-data" asp-page-handler="Upload" asp-route-id="@Model.Gallery!.Id">
+                <div class="mb-3">
+                    <input asp-for="Uploads" type="file" class="form-control" accept="image/*" multiple />
+                    <span asp-validation-for="Uploads" class="text-danger"></span>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </form>
+
+            <small class="text-muted d-block mt-2">JPEG, PNG, GIF, WEBP. Max 20&nbsp;MB per file.</small>
+        </div>
+    </div>
 </div>
 
 @if (Model.Photos.Count == 0)
@@ -25,7 +54,6 @@
     <div class="text-center p-5 border rounded bg-light">
         <img src="/img/placeholder-photo.svg" width="160" class="mb-3" alt="No photos yet" />
         <p class="text-muted mb-3">No photos in this gallery yet.</p>
-        <a class="btn btn-primary disabled" title="Coming soon">Upload photos</a>
     </div>
 }
 else
@@ -33,9 +61,9 @@ else
     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
         @foreach (var p in Model.Photos)
         {
-            var src = string.IsNullOrWhiteSpace(p.ThumbPath)
-                ? "/img/placeholder-photo.svg" 
-                : p.ThumbPath;
+            var src = !string.IsNullOrWhiteSpace(p.ThumbPath) ? p.ThumbPath
+                : !string.IsNullOrWhiteSpace(p.OriginalPath) ? p.OriginalPath
+                : "/img/placeholder-photo.svg";
 
             <div class="col">
                 <div class="card shadow-sm h-100">

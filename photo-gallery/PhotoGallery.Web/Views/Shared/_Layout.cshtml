@@ -1,53 +1,130 @@
-﻿<!DOCTYPE html>
+﻿@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - PhotoGallery.Web</title>
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/PhotoGallery.Web.styles.css" asp-append-version="true" />
+
+
+    <style>
+        html, body { height: 100%; }
+        #page {
+            min-height: 100vh;              
+            display: grid;
+            grid-template-rows: 1fr auto;     
+        }
+
+        footer.footer {
+            height: 48px;                   
+            background: #fff;
+            padding: 0;                     
+        }
+        footer.footer .container {
+            height: 100%;
+            display: flex;
+            align-items: center;            
+            justify-content: space-between;
+            gap: .75rem;
+            white-space: nowrap;             
+            overflow: hidden;               
+        }
+
+        #siteNav {
+            transition: transform .25s ease, box-shadow .18s ease;
+            will-change: transform;
+            background: #fff;               
+        }
+        #siteNav.nav-hidden   { transform: translateY(-100%); }
+        #siteNav.nav-elevated { box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+    </style>
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">PhotoGallery.Web</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+        <nav id="siteNav" class="navbar navbar-expand-sm navbar-light bg-white border-bottom fixed-top">
+            <div class="container">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">PhotoGallery.Web</a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
+                        aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                        <li class="nav-item"></li>
-                            <a class="nav-link text-dark" asp-controller="Galleries" asp-action="Index">Galleries</a>
-                        </li>
+
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Home</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Galleries" asp-action="Index">Galleries</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Privacy">Privacy</a></li>
                     </ul>
+
                     <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+    <div id="page">
+        <div class="container">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+
+        <footer class="border-top footer text-muted">
+            <div class="container">
+                <span>&copy; @DateTime.UtcNow.Year - PhotoGallery.Web</span>
+                <a class="text-decoration-none" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            </div>
+        </footer>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - PhotoGallery.Web - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+        (function () {
+            const nav = document.getElementById('siteNav');
+            if (!nav) return;
+
+            function applyBodyPadding() {
+                document.body.style.paddingTop = nav.offsetHeight + 'px';
+            }
+            window.addEventListener('load', applyBodyPadding);
+            window.addEventListener('resize', applyBodyPadding);
+
+            const collapse = document.getElementById('navbarContent');
+            if (collapse) {
+                collapse.addEventListener('shown.bs.collapse',  applyBodyPadding);
+                collapse.addEventListener('hidden.bs.collapse', applyBodyPadding);
+            }
+
+            let lastY = window.pageYOffset || 0;
+            const delta = 6; 
+
+            function onScroll() {
+                const y = window.pageYOffset || 0;
+
+                if (y > 2) nav.classList.add('nav-elevated');
+                else       nav.classList.remove('nav-elevated');
+
+                if (Math.abs(y - lastY) > delta) {
+                    if (y > lastY && y > nav.offsetHeight + 10) {
+                        nav.classList.add('nav-hidden');     
+                    } else {
+                        nav.classList.remove('nav-hidden');  
+                    }
+                    lastY = y;
+                }
+            }
+
+            onScroll();
+            window.addEventListener('scroll', onScroll, { passive: true });
+        })();
+    </script>
+
+    @RenderSection("Scripts", required: false)
 </body>
 </html>

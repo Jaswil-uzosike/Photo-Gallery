@@ -1,0 +1,121 @@
+@model PhotoGallery.Web.Controllers.PublicGalleryVM
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<h2 class="mb-1">@Model.Title</h2>
+<p class="text-muted mb-3">
+    by <strong>@Model.OwnerName</strong> • @Model.CreatedDateText
+</p>
+
+@if (!string.IsNullOrWhiteSpace(Model.Description))
+{
+    <p class="mb-4">@Model.Description</p>
+}
+
+@if (Model.Photos.Count == 0)
+{
+    <div class="text-center p-5 border rounded bg-light">
+        <img src="/img/placeholder-photo.svg" width="160" class="mb-3" alt="No photos yet" />
+        <p class="text-muted mb-0">No photos in this gallery yet.</p>
+    </div>
+}
+else
+{
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+        @for (var i = 0; i < Model.Photos.Count; i++)
+        {
+            var p = Model.Photos[i];
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <img src="@p.ThumbUrl"
+                         class="card-img-top view-photo"
+                         alt="Photo @p.Id"
+                         style="object-fit:cover; aspect-ratio: 4/3; cursor: zoom-in;"
+                         data-index="@i"
+                         data-fullurl="@p.FullUrl"
+                         data-caption="Photo @p.Id"
+                         data-bs-toggle="modal"
+                         data-bs-target="#photoModal" />
+                    <div class="card-body p-2 d-flex gap-2 align-items-center">
+                        <a class="btn btn-sm btn-outline-success ms-auto"
+                           asp-controller="Galleries"
+                           asp-action="Download"
+                           asp-route-id="@Model.Id"
+                           asp-route-photoId="@p.Id">
+                            Download
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- read only lightbox  -->
+<style>
+  .lightbox-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    z-index: 5; background: rgba(255,255,255,.85); border: 0;
+    width: 3rem; height: 3rem; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .lightbox-prev { left: .75rem; } .lightbox-next { right: .75rem; }
+</style>
+
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content position-relative">
+      <div class="modal-header">
+        <h5 class="modal-title" id="photoModalLabel">Photo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <button type="button" class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous">‹</button>
+      <button type="button" class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next">›</button>
+      <div class="modal-body text-center">
+        <img id="modalImage" src="" alt="Full photo" class="img-fluid" />
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+  <script>
+    (function () {
+      const modalEl = document.getElementById('photoModal');
+      const imgEl   = document.getElementById('modalImage');
+      const titleEl = document.getElementById('photoModalLabel');
+      const prevBtn = document.getElementById('lightboxPrev');
+      const nextBtn = document.getElementById('lightboxNext');
+      if (!modalEl || !imgEl || !titleEl || !prevBtn || !nextBtn) return;
+
+      const nodes = Array.from(document.querySelectorAll('.view-photo[data-fullurl]'));
+      let current = -1;
+
+      function load(index) {
+        if (index < 0 || index >= nodes.length) return;
+        current = index;
+        const el = nodes[current];
+        const url = el.getAttribute('data-fullurl') || '/img/placeholder-photo.svg';
+        const caption = el.getAttribute('data-caption') || 'Photo';
+        imgEl.src = url; titleEl.textContent = caption;
+      }
+      function prev() { if (nodes.length) load((current - 1 + nodes.length) % nodes.length); }
+      function next() { if (nodes.length) load((current + 1) % nodes.length); }
+
+      modalEl.addEventListener('show.bs.modal', function (ev) {
+        const el = ev.relatedTarget;
+        const idx = el ? parseInt(el.getAttribute('data-index') || '-1', 10) : -1;
+        if (idx >= 0) load(idx);
+      });
+      modalEl.addEventListener('hidden.bs.modal', function () { imgEl.src = ''; current = -1; });
+      prevBtn.addEventListener('click', prev);
+      nextBtn.addEventListener('click', next);
+      modalEl.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+      });
+      modalEl.addEventListener('shown.bs.modal', () => modalEl.focus());
+    })();
+  </script>
+}

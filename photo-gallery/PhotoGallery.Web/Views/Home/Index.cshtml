@@ -1,8 +1,154 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model PhotoGallery.Web.Controllers.HomeFeedVM
+@{
+    ViewData["Title"] = "For You";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <small class="text-muted">Fresh picks from across all galleries</small>
 </div>
+
+<style>
+
+  .reel { max-width: 900px; margin: 0 auto; }
+  .reel-item { margin-bottom: 2rem; }
+
+  .reel-img-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: .75rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  }
+
+  .reel-img-blur {
+    width: 100%;
+    display: block;
+    filter: blur(24px);
+    transform: scale(1.08);
+    opacity: .6;
+    transition: opacity .35s ease;
+  }
+
+  .reel-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;    
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity .4s ease;
+  }
+  .reel-img.loaded { opacity: 1; }
+  .reel-img.loaded ~ .reel-img-blur { opacity: .12; } 
+
+  .reel-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .75rem; margin-top: .5rem;
+  }
+  .reel-title {
+    font-size: 1rem; color: #6c757d;
+    text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
+  }
+</style>
+
+@if (Model.Photos.Count == 0)
+{
+    <div class="text-center p-5 border rounded bg-light">
+        <img src="/img/placeholder-photo.svg" width="160" class="mb-3" alt="No photos yet" />
+        <p class="text-muted mb-0">No photos to show… upload a few and check back!</p>
+    </div>
+}
+else
+{
+    <div id="feed" class="reel">
+        @await Html.PartialAsync("_FeedItems", Model.Photos) 
+    </div>
+
+    <div id="spinner" class="text-center my-4" style="display:none;">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Loading…</span></div>
+    </div>
+}
+
+@section Scripts {
+<script>
+(function () {
+  const feedEl   = document.getElementById('feed');
+  const spinner  = document.getElementById('spinner');
+  if (!feedEl) return;
+
+
+  let page    = @Model.Page;                      
+  let hasMore = @Model.HasMore.ToString().ToLower();
+  let loading = false;
+
+  let loopMode = false;          
+  const MAX_KEEP = 200;           
+
+  function trimOld() {             
+    const items = feedEl.querySelectorAll('.reel-item');
+    if (items.length > MAX_KEEP) {
+      const removeCount = items.length - MAX_KEEP;
+      for (let i = 0; i < removeCount; i++) items[i].remove();
+    }
+  }
+
+  function initReelImages(root) {
+    const scope = root || document;
+    const imgs = scope.querySelectorAll('img.reel-img:not([data-inited])');
+    imgs.forEach(img => {
+      img.dataset.inited = '1';
+      const mark = () => img.classList.add('loaded');
+      if (img.complete && img.naturalWidth) mark();
+      else img.addEventListener('load', mark, { once: true });
+    });
+  }
+  initReelImages(document);
+
+  async function loadMore() {
+    if (loading) return;
+
+    if (!hasMore) {                
+      loopMode = true;          
+      page = 0;                  
+      hasMore = true;               
+    }
+
+    loading = true; spinner.style.display = 'block';
+
+    try {
+      const nextPage = page + 1;
+
+      const resp = await fetch(`/Home/Feed?page=${nextPage}&t=${Date.now()}`,
+                               { headers: { 'X-Requested-With': 'fetch' } });
+      const html = await resp.text();
+
+      hasMore = (resp.headers.get('X-HasMore') === '1');
+
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+
+      while (temp.firstChild) feedEl.appendChild(temp.firstChild);
+      initReelImages(feedEl);
+
+      trimOld();
+
+      page = nextPage;
+    } catch (e) {
+      console.error(e);
+    } finally {
+      spinner.style.display = 'none';
+      loading = false;
+    }
+  }
+
+  function nearBottom() {
+    const scrollY = window.scrollY || window.pageYOffset;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const full = document.documentElement.scrollHeight || document.body.scrollHeight;
+    return (scrollY + vh) > (full - 400);
+  }
+
+  window.addEventListener('scroll', () => { if (nearBottom()) loadMore(); }, { passive: true });
+})();
+</script>
+}
+

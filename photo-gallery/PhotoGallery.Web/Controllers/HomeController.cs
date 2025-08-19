@@ -1,49 +1,122 @@
-using System.Diagnostics;
-using Microsoft.AspNetCore.Identity;                 
+using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PhotoGallery.Web.Models;                       
+using Microsoft.EntityFrameworkCore;
+using PhotoGallery.Web.Data;
+using PhotoGallery.Web.Services;
 
-namespace PhotoGallery.Web.Controllers;
-
-public class HomeController : Controller
+namespace PhotoGallery.Web.Controllers
 {
-    private readonly ILogger<HomeController> _logger;
-
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-
-
-    public HomeController(
-        ILogger<HomeController> logger,
-        UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
+    [AllowAnonymous]
+    public class HomeController : Controller
     {
-        _logger = logger;
-        _userManager = userManager;
-        _signInManager = signInManager;
-    }
+        private readonly ApplicationDbContext _db;
+        private readonly IFileStorage _storage;
 
-    public async Task<IActionResult> Index()
-    {
-        if (_signInManager.IsSignedIn(User))
+        public HomeController(ApplicationDbContext db, IFileStorage storage)
         {
-            var me = await _userManager.GetUserAsync(User);
-
-            var fullName = (me is not null && (!string.IsNullOrWhiteSpace(me.FirstName) || !string.IsNullOrWhiteSpace(me.LastName)))
-                ? $"{me!.FirstName} {me!.LastName}".Trim()
-                : me?.Email ?? User.Identity?.Name ?? "User";
-
-            ViewBag.FullName = fullName;
+            _db = db;
+            _storage = storage;
         }
 
-        return View();
+        
+        private const int PageSize = 24;
+        private const int SampleSize = 500;   
+
+        public async Task<IActionResult> Index()
+        {
+            var vm = await BuildFeedPageAsync(page: 1);
+            return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Feed(int page = 2)
+        {
+            if (page < 1) page = 1;
+            var vm = await BuildFeedPageAsync(page);
+
+            Response.Headers["X-HasMore"] = vm.HasMore ? "1" : "0";
+            return PartialView("_FeedItems", vm.Photos);
+        }
+
+
+        private async Task<HomeFeedVM> BuildFeedPageAsync(int page)
+        {
+            if (page < 1) page = 1;
+
+            var sample = await (
+                from p in _db.Photos
+                join g in _db.Galleries on p.GalleryId equals g.Id
+                join u in _db.Users on g.OwnerId equals u.Id into uj
+                from u in uj.DefaultIfEmpty()
+                orderby p.CreatedUtc descending
+                select new
+                {
+                    PhotoId = p.Id,
+                    p.GalleryId,
+                    GalleryTitle = g.Title, 
+                    p.ThumbStorageKey,
+                    p.ThumbPath,
+                    p.StorageKey,
+                    p.OriginalPath,
+                    p.CreatedUtc,
+                    OwnerName =
+                        (((u.FirstName ?? "") + " " + (u.LastName ?? "")).Trim() != ""
+                            ? ((u.FirstName ?? "") + " " + (u.LastName ?? "")).Trim()
+                            : (u.Email ?? "Unknown"))
+                })
+                .Take(SampleSize)
+                .ToListAsync();
+
+            var rng = new Random();
+            var shuffled = sample.OrderBy(_ => rng.Next()).ToList();
+
+            var skip = (page - 1) * PageSize;
+            var pageItems = shuffled.Skip(skip).Take(PageSize).ToList();
+            var hasMore = shuffled.Count > skip + PageSize;
+
+            var photos = pageItems.Select(x => new HomeFeedItemVM
+            {
+                PhotoId = x.PhotoId,
+                GalleryId = x.GalleryId,
+                GalleryTitle = x.GalleryTitle ?? "Untitled gallery", 
+                ThumbUrl =
+                    !string.IsNullOrWhiteSpace(x.ThumbStorageKey) ? _storage.GetReadUrl(x.ThumbStorageKey, TimeSpan.FromHours(1)) :
+                    !string.IsNullOrWhiteSpace(x.ThumbPath)       ? x.ThumbPath :
+                    !string.IsNullOrWhiteSpace(x.OriginalPath)     ? x.OriginalPath :
+                    "/img/placeholder-photo.svg",
+                FullUrl =
+                    !string.IsNullOrWhiteSpace(x.StorageKey)       ? _storage.GetReadUrl(x.StorageKey, TimeSpan.FromHours(1)) :
+                    !string.IsNullOrWhiteSpace(x.OriginalPath)     ? x.OriginalPath :
+                    "/img/placeholder-photo.svg",
+                Caption = $"by {x.OwnerName} • {x.CreatedUtc.ToString("dd MMMM yyyy", CultureInfo.InvariantCulture)}"
+            }).ToList();
+
+            return new HomeFeedVM
+            {
+                Page = page,
+                PageSize = PageSize,
+                HasMore = hasMore,
+                Photos = photos
+            };
+        }
     }
 
-    public IActionResult Privacy() => View();
-
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
+    public class HomeFeedVM
     {
-        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public bool HasMore { get; set; }
+        public List<HomeFeedItemVM> Photos { get; set; } = new();
+    }
+
+    public class HomeFeedItemVM
+    {
+        public int PhotoId { get; set; }
+        public int GalleryId { get; set; }
+        public string GalleryTitle { get; set; } = "Untitled gallery"; 
+        public string ThumbUrl { get; set; } = "/img/placeholder-photo.svg";
+        public string FullUrl { get; set; } = "/img/placeholder-photo.svg";
+        public string Caption { get; set; } = "Photo";
     }
 }

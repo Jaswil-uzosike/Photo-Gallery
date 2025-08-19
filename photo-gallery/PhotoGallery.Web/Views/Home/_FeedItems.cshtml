@@ -1,0 +1,41 @@
+@model IEnumerable<PhotoGallery.Web.Controllers.HomeFeedItemVM>
+
+@{
+    var list = Model?.ToList() ?? new List<PhotoGallery.Web.Controllers.HomeFeedItemVM>();
+}
+
+@for (var i = 0; i < list.Count; i++)
+{
+    var p = list[i];
+    <div class="reel-item">
+        <div class="reel-img-wrap">
+            <img
+                class="reel-img"
+                src="@p.FullUrl"
+                alt="Photo @p.PhotoId"
+                loading="lazy" />
+
+            <img
+                class="reel-img-blur"
+                src="@p.ThumbUrl"
+                alt=""
+                aria-hidden="true" />
+        </div>
+
+        <div class="reel-meta">
+            <div class="reel-title">
+                <a asp-controller="Galleries"
+                   asp-action="Show"
+                   asp-route-id="@p.GalleryId"
+                   class="text-decoration-none">@p.GalleryTitle</a>
+            </div>
+            <a class="btn btn-sm btn-outline-success"
+               asp-controller="Galleries"
+               asp-action="Download"
+               asp-route-id="@p.GalleryId"
+               asp-route-photoId="@p.PhotoId">
+                Download
+            </a>
+        </div>
+    </div>
+}

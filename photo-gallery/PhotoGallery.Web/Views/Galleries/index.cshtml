@@ -1,35 +1,59 @@
 @* view for a list of galleries *@
-@model IEnumerable<PhotoGallery.Web.Models.Gallery>
+@using System.Globalization
+@model IReadOnlyList<PhotoGallery.Web.Controllers.PublicGalleryListItemVM>
 
 @{
     ViewData["Title"] = "Galleries";
+    var q = (ViewBag.Query as string) ?? "";
 }
 
-<h1 class="display-6">Galleries</h1>
+<!--search form -->
+<form method="get" class="mb-3">
+  <div class="input-group">
+    <input type="text"
+           class="form-control"
+           name="q"
+           value="@q"
+           placeholder="Search galleries by title, description, or owner..." />
+    <button class="btn btn-primary" type="submit">Search</button>
+    @if (!string.IsNullOrWhiteSpace(q))
+    {
+        <a class="btn btn-outline-secondary" asp-controller="Galleries" asp-action="Index">Clear</a>
+    }
+  </div>
+</form>
 
-@if (!Model.Any())
+<h2 class="mb-3">Galleries <small class="text-muted">(@Model.Count)</small></h2> 
+
+@if (!string.IsNullOrWhiteSpace(q))
 {
-    <p class="text-muted">Chill for now</p>
+    <p class="text-muted">Showing results for “<strong>@q</strong>”.</p>
+}
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">No galleries yet.</div>
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Description</th>
-                <th>Created (UTC)</th>
-            </tr>
-        </thead>
-        <tbody>
+    <div class="list-group">
         @foreach (var g in Model)
         {
-            <tr>
-                <td>@g.Title</td>
-                <td>@g.Description</td>
-                <td>@g.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
-            </tr>
+            <a class="list-group-item list-group-item-action" asp-controller="Galleries" asp-action="Show" asp-route-id="@g.Id">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">@g.Title</h5>
+                    <small class="text-muted">
+                        @g.CreatedUtc.ToString("dd MMMM yyyy", CultureInfo.InvariantCulture)
+                    </small>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(g.Description))
+                {
+                    <p class="mb-1 text-muted">@g.Description</p>
+                }
+                <small class="text-muted">
+                    by <strong>@g.OwnerName</strong> • @g.PhotoCount photo@(g.PhotoCount == 1 ? "" : "s")
+                </small>
+            </a>
         }
-        </tbody>
-    </table>
+    </div>
 }

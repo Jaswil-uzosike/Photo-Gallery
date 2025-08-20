@@ -1,4 +1,6 @@
-﻿@model PhotoGallery.Web.Controllers.HomeFeedVM
+﻿@* this home view shows the For You reel: renders first batch of photos and sets up the infinite-scroll loop
+that fetches more pages and restarts after the end so it feels endless. *@
+@model PhotoGallery.Web.Controllers.HomeFeedVM
 @{
     ViewData["Title"] = "For You";
 }

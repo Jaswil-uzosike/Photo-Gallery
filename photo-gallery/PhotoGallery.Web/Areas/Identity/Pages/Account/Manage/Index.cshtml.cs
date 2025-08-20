@@ -1,5 +1,6 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
+// This is the user profile settings page. It loads the user's current
+// details (name + phone), lets you update them, and refreshes
+// your sign-in so the changes take effect right away.
 #nullable disable
 
 using System;

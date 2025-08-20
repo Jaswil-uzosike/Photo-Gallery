@@ -1,3 +1,6 @@
+/*  Azure Blob storage adapter Saves originals and thumbnails 
+to Azure Blob Storage, builds time-limited read URLs (SAS), opens streams for downloads,
+and deletes blobs.*/
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Http;
@@ -5,7 +8,6 @@ using Azure.Storage.Sas;
 
 namespace PhotoGallery.Web.Services
 {
-    // Azure Blob implementation. Stores objects at: photogallery/{userId}/{galleryId}/original/{guid}{ext}
     public class AzureBlobFileStorage : IFileStorage
     {
         private readonly BlobServiceClient _svc;
@@ -36,7 +38,6 @@ namespace PhotoGallery.Web.Services
             await using var stream = file.OpenReadStream();
             await blob.UploadAsync(stream, options, ct);
 
-            // If you use a CDN, replace blob.Uri with your CDN base + key.
             return (blob.Uri.ToString(), key);
         }
 
@@ -63,12 +64,15 @@ namespace PhotoGallery.Web.Services
             var result = await blob.DeleteIfExistsAsync(DeleteSnapshotsOption.IncludeSnapshots, cancellationToken: ct);
             return result.Value;
         }
+
+        /* Thumbs are always stored as JPEG in a private area. This keeps
+        files small, consistent, and cache-friendly. */
+
         public async Task<(string Url, string Key)> SaveThumbnailAsync(string userId, int galleryId, Stream stream, string contentType, CancellationToken ct = default)
         {
             var container = _svc.GetBlobContainerClient(_containerName);
             await container.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: ct);
 
-            // use jpg for thumbs regardless of source, keeps things small
             var key = $"{userId}/{galleryId}/thumbs/{Guid.NewGuid():N}.jpg";
             var blob = container.GetBlobClient(key);
 
@@ -77,7 +81,6 @@ namespace PhotoGallery.Web.Services
                 HttpHeaders = new BlobHttpHeaders { ContentType = "image/jpeg" }
             };
 
-            // ensure stream is at start
             if (stream.CanSeek) stream.Position = 0;
             await blob.UploadAsync(stream, opts, ct);
 

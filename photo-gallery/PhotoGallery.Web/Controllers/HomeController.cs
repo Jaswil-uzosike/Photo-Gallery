@@ -1,3 +1,7 @@
+/* Builds the vertical, single-photo “feed” for the homepage. We grab a
+ recent sample, shuffle it, page it, and return a partial view for
+infinite scroll. Image links prefer time-limited URLs when possible.*/
+
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,6 +43,7 @@ namespace PhotoGallery.Web.Controllers
             return PartialView("_FeedItems", vm.Photos);
         }
 
+        //We pull a capped sample of recent photos, shuffle them server-side, and then paginate that list
 
         private async Task<HomeFeedVM> BuildFeedPageAsync(int page)
         {
@@ -54,7 +59,7 @@ namespace PhotoGallery.Web.Controllers
                 {
                     PhotoId = p.Id,
                     p.GalleryId,
-                    GalleryTitle = g.Title, 
+                    GalleryTitle = g.Title,
                     p.ThumbStorageKey,
                     p.ThumbPath,
                     p.StorageKey,
@@ -79,15 +84,15 @@ namespace PhotoGallery.Web.Controllers
             {
                 PhotoId = x.PhotoId,
                 GalleryId = x.GalleryId,
-                GalleryTitle = x.GalleryTitle ?? "Untitled gallery", 
+                GalleryTitle = x.GalleryTitle ?? "Untitled gallery",
                 ThumbUrl =
                     !string.IsNullOrWhiteSpace(x.ThumbStorageKey) ? _storage.GetReadUrl(x.ThumbStorageKey, TimeSpan.FromHours(1)) :
-                    !string.IsNullOrWhiteSpace(x.ThumbPath)       ? x.ThumbPath :
-                    !string.IsNullOrWhiteSpace(x.OriginalPath)     ? x.OriginalPath :
+                    !string.IsNullOrWhiteSpace(x.ThumbPath) ? x.ThumbPath :
+                    !string.IsNullOrWhiteSpace(x.OriginalPath) ? x.OriginalPath :
                     "/img/placeholder-photo.svg",
                 FullUrl =
-                    !string.IsNullOrWhiteSpace(x.StorageKey)       ? _storage.GetReadUrl(x.StorageKey, TimeSpan.FromHours(1)) :
-                    !string.IsNullOrWhiteSpace(x.OriginalPath)     ? x.OriginalPath :
+                    !string.IsNullOrWhiteSpace(x.StorageKey) ? _storage.GetReadUrl(x.StorageKey, TimeSpan.FromHours(1)) :
+                    !string.IsNullOrWhiteSpace(x.OriginalPath) ? x.OriginalPath :
                     "/img/placeholder-photo.svg",
                 Caption = $"by {x.OwnerName} • {x.CreatedUtc.ToString("dd MMMM yyyy", CultureInfo.InvariantCulture)}"
             }).ToList();

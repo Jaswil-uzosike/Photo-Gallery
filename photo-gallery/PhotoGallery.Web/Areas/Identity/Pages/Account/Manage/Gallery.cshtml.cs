@@ -1,3 +1,8 @@
+// Shows a single gallery you own, lists its photos, handles uploads,
+// makes thumbnails (ImageSharp), supports an edited-image upload via
+// data URL, streams a download of the original, and lets you delete.
+// Identity is used everywhere to ensure it’s your gallery.
+
 using System.IO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -70,6 +75,11 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
         {
             "image/jpeg", "image/png", "image/gif", "image/webp"
         };
+        
+         /* Each file is validated (size/type), saved to storage, then we
+           generate an approximately600px JPEG thumbnail with ImageSharp and save that too.
+           We keep both URLs/keys in the DB so display is fast and originals
+           stay intact for downloads. */
 
         public async Task<IActionResult> OnPostUploadAsync(int id)
         {
@@ -125,8 +135,8 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
                 {
                     GalleryId = id,
                     OriginalPath = url,
-                    ThumbPath = thumbUrl,                
-                    ThumbStorageKey = thumbKey,           
+                    ThumbPath = thumbUrl,
+                    ThumbStorageKey = thumbKey,
                     ContentType = file.ContentType,
                     SizeBytes = file.Length,
                     CreatedUtc = now,
@@ -153,8 +163,11 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
 
             return RedirectToPage(new { id });
         }
-        
+
         //Edit for crop\rotate
+        //The browser sends a base64 data URL after client edits. We parse
+        //it, build an IFormFile, save the original, then re-generate the
+        //600px JPEG thumbnail just like normal uploads. */
         public async Task<IActionResult> OnPostUploadEditedAsync(int id)
         {
             if (!await LoadAsync(id)) return NotFound();
@@ -210,8 +223,8 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
             {
                 GalleryId = id,
                 OriginalPath = url,
-                ThumbPath = thumbUrl,                 
-                ThumbStorageKey = thumbKey,           
+                ThumbPath = thumbUrl,
+                ThumbStorageKey = thumbKey,
                 ContentType = contentType,
                 SizeBytes = bytes.LongLength,
                 CreatedUtc = DateTime.UtcNow,
@@ -241,7 +254,9 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
             return (ct, bytes);
         }
 
-        // Download
+        /* If we have a storage key, we stream the file from storage with a
+           proper content type and a friendly filename. Otherwise, we fall
+           back to redirecting to the OriginalPath URL. Owner check stays on. */
         public async Task<IActionResult> OnGetDownloadAsync(int id, int photoId)
         {
             var uid = _userManager.GetUserId(User)!;

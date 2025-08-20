@@ -1,3 +1,7 @@
+// Loads one photofrom your gallery, checks ownership, and picks
+// the best URL to show (signed storage URL if we have a key,
+// otherwise the original public path). Thenit renders the page.
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -34,6 +38,11 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
                 .FirstOrDefaultAsync();
 
             if (Photo == null) return NotFound();
+
+            /* If we stored this photo with a StorageKey, we ask the storage
+            service for a temporary (like 1 hour) signed URL. That way
+            the file stays locked down, but the page can still display it. */
+
 
             if (!string.IsNullOrWhiteSpace(Photo.StorageKey))
             {

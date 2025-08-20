@@ -1,3 +1,7 @@
+// Lists public galleries, supports a simple search, shows a single gallery,
+// and handles downloads. When photo storage keys exist, we build time-limited
+// read URLs; otherwise we fall back to the stored public paths.
+
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +24,9 @@ namespace PhotoGallery.Web.Controllers
             _db = db;
             _storage = storage;
         }
-
+        /* Tiny, case-insensitive filter over title/description/owner.
+           We project straight into a lightweight VM and echo the query
+           back to the view so the user can clear/edit it easily. */
         public async Task<IActionResult> Index(string? q)
         {
             q = q?.Trim();
@@ -41,7 +47,6 @@ namespace PhotoGallery.Web.Controllers
                             PhotoCount = _db.Photos.Count(p => p.GalleryId == g.Id)
                         };
 
-            // ADDED: simple case-insensitive search across title/description/owner
             if (!string.IsNullOrEmpty(qLower))
             {
                 query = query.Where(x =>
@@ -62,11 +67,16 @@ namespace PhotoGallery.Web.Controllers
                 })
                 .ToListAsync();
 
-            // ADDED: pass query to view for echo/clear link
-            ViewBag.Query = q ?? string.Empty; // ADDED
+
+            ViewBag.Query = q ?? string.Empty;
 
             return View(items);
         }
+
+        /* For each photo we prefer a short-lived signed URL (StorageKey),
+        else we fall back to saved thumb/original paths, else a placeholder.
+        Keeps private blobs private but still viewable. */
+
         public async Task<IActionResult> Show(int id)
         {
             var g = await _db.Galleries.FirstOrDefaultAsync(x => x.Id == id);
@@ -113,6 +123,10 @@ namespace PhotoGallery.Web.Controllers
 
             return View(vm);
         }
+
+        /* If a blob StorageKey exists, then we'll stream the original with a nice
+        filename based on content type. If not, we'll sha redirect to OriginalPath.
+        Straightforward but userfriendly. */
 
         [HttpGet]
         public async Task<IActionResult> Download(int id, int photoId)

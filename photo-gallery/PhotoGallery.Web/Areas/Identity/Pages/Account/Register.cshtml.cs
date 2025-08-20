@@ -1,5 +1,6 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
+// Creates a new user account with first/last name, email, and password.
+// If email confirmation is on, it sends a confirmation link; otherwise
+// it signs you in right away and redirects home.
 #nullable disable
 
 using System;
@@ -98,6 +99,11 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account
                 {
                     _logger.LogInformation("User created a new account with password.");
 
+                    /* When confirmation is required, we generate a token,
+                    base64 it, and build a callback URL. The email sender
+                    delivers it so the user can prove the address is theirs. */
+
+
                     var userId = await _userManager.GetUserIdAsync(user);
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
@@ -108,7 +114,7 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account
                         protocol: Request.Scheme);
 
                     await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                        $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                        $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>. The link is only valid for 10 minutes");
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {
@@ -126,7 +132,6 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account
                 }
             }
 
-            // If we got this far, something failed, redisplay form
             return Page();
         }
 

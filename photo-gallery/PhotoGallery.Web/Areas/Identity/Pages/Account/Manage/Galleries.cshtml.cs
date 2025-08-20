@@ -1,5 +1,8 @@
 
-// Galleries page inside the Profile section.
+// This is the “My Galleries” page under the profile area. It loads your
+// galleries, lets you create a new one, and delete your own. It grabs
+// your user id via Identity, queries EF Core, and returns the Razor Page.
+// Nothing fancy with photos really just gallery management.
 
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
@@ -77,7 +80,10 @@ namespace PhotoGallery.Web.Areas.Identity.Pages.Account.Manage
             TempData["StatusMessage"] = "Gallery created.";
             return RedirectToPage(); 
         }
-
+        
+         /*We sanity-check the current user matches Gallery.OwnerId before
+          deleting. Even if someone fiddles with the UI, this server check
+          keeps permissions in a chokehold. */
         public async Task<IActionResult> OnPostDeleteAsync(int id)
         {
             var uid = _userManager.GetUserId(User)!;

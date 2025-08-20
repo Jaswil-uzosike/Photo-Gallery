@@ -1,3 +1,8 @@
+// Boots the web app: registers EF Core (SQLite), Identity auth,
+// Razor Pages + MVC, upload limits, and the HTTP pipeline (HTTPS,
+// static files, routing, auth). Basically the plumbing so galleries,
+// photos, and the reel stuff can actually work.
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -5,20 +10,29 @@ using Microsoft.AspNetCore.Http.Features;
 using PhotoGallery.Web.Data;
 using PhotoGallery.Web.Models;
 using PhotoGallery.Web.Services;
+using Microsoft.AspNetCore.Identity.UI.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.Configure<DataProtectionTokenProviderOptions>(o =>
+{
+    o.TokenLifespan = TimeSpan.FromMinutes(10);
+});
+
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.AddTransient<IEmailSender, PhotoGallery.Web.Services.SmtpEmailSender>();
 
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = false;
+    options.SignIn.RequireConfirmedAccount = true;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = false;
+    options.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders()

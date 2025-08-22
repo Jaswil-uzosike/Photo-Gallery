@@ -1,30 +1,30 @@
-// Boots the web app: registers EF Core (SQLite), Identity auth,
-// Razor Pages + MVC, upload limits, and the HTTP pipeline (HTTPS,
-// static files, routing, auth). Basically the plumbing so galleries,
-// photos, and the reel stuff can actually work.
-
+// Spins up the app and wires the essentials: database (SQLite by default),
+// Identity with confirmed emails, Razor Pages + MVC, file storage, email
+// sender, upload size limits, and the HTTP pipeline. Basically the plumbing.
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;          
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http.Features;
 using PhotoGallery.Web.Data;
-using PhotoGallery.Web.Models;
-using PhotoGallery.Web.Services;
-using Microsoft.AspNetCore.Identity.UI.Services;
-
+using PhotoGallery.Web.Models;                             
+using PhotoGallery.Web.Services;                            
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+var conn = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(conn))                       
+    conn = "Data Source=app.db";                            
 
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlite(conn));                             
+
+// Email confirmation links last for 10minutes only
 builder.Services.Configure<DataProtectionTokenProviderOptions>(o =>
 {
-    o.TokenLifespan = TimeSpan.FromMinutes(10);
+    o.TokenLifespan = TimeSpan.FromMinutes(10);             
 });
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-builder.Services.AddTransient<IEmailSender, PhotoGallery.Web.Services.SmtpEmailSender>();
 
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
@@ -38,30 +38,39 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 .AddDefaultTokenProviders()
 .AddDefaultUI();
 
-var provider = builder.Configuration["Storage:Provider"] ?? "AzureBlob";
 
-if (provider.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase))
+builder.Services.AddSingleton<IFileStorage, AzureBlobFileStorage>();   
+
+
+if (builder.Environment.IsDevelopment())
 {
-    builder.Services.AddSingleton<IFileStorage, AzureBlobFileStorage>(); 
+    builder.Services.AddSingleton<IEmailSender, DevEmailSender>();   
 }
 else
 {
-    builder.Services.AddSingleton<IFileStorage, AzureBlobFileStorage>();
+    builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();    
 }
+
 
 builder.Services.Configure<FormOptions>(o =>
 {
-    o.MultipartBodyLengthLimit = 50 * 1024 * 1024;
+    o.MultipartBodyLengthLimit = 50 * 1024 * 1024; // 50 MB
 });
-
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
+{
     app.UseMigrationsEndPoint();
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
 else
 {
     app.UseExceptionHandler("/Home/Error");
@@ -70,12 +79,15 @@ else
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 app.UseRouting();
-app.UseAuthentication();   
+
+app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllerRoute(name: "default",
+app.MapControllerRoute(
+    name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
-app.MapRazorPages();        
+app.MapRazorPages();
 
 app.Run();

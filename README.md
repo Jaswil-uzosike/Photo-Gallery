@@ -4,28 +4,6 @@ A clean starter for a user-generated photo gallery built with .NET 8 + ASP.NET C
 It uses Azure Blob Storage for images, supports email confirmation, and ships with a clone-and-run dev experience.
 
 
-
-Table of contents
-•	[Features](#features)
-•	[Tech stack](#tech-stack)
-•	[Repository layout](#repository-layout)
-•	[Prerequisites](#prerequisites)
-•	[Quick start (Development)](#quick-start-development)
-  - [Option A — Azurite (no Azure account required)](#option-a--azurite-no-azure-account-required)
-  - [Option B — Real Azure Storage account](#option-b--real-azure-storage-account)
-•	[Configuration](#configuration)
-  - [appsettings.Development.json (example)](#appsettingsdevelopmentjson-example)
-  - [Secrets & environment variables](#secrets--environment-variables)
-•	[Database](#database)
-•	[Email](#email)
-•	[Running in Production](#running-in-production)
-•	[Troubleshooting](#troubleshooting)
-•	[Contributing](#contributing)
-•	[License](#license)
-•	[Useful docs](#useful-docs)
-
-
-
 Features
 •	User registration & login with **email confirmation**
 •	Create, edit, delete **galleries** and photos
@@ -43,22 +21,7 @@ Tech stack
 •	**Azure Storage Blobs** for image storage
 •	**MailKit/SMTP** (prod) and **DevEmailSender** (dev-only)
 
-
-
-Repository layout
-photo-gallery/
-├─ global.json
-├─ PhotoGallery.Web/
-│  ├─ Program.cs
-│  ├─ PhotoGallery.Web.csproj
-│  ├─ appsettings.json
-│  ├─ appsettings.Development.json
-│  ├─ EmailDrop/                # dev “emails” appear here as .html
-│  ├─ wwwroot/                  # static files
-│  └─ ... Controllers, Views, Data, Services, etc.
-└─ README.md
 The app is configured to use **Azure Blob** as the storage implementation. For local dev without a real Azure account, use **Azurite** and set `UseDevelopmentStorage=true` (see below).
-
 
 
 Prerequisites
